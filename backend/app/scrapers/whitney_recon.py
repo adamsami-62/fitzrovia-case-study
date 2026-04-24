@@ -1,4 +1,4 @@
-"""Whitney recon — locate the desktop scope and verify row counts."""
+"""Whitney recon v3 — use data-link anchors, check real visibility."""
 import asyncio
 from playwright.async_api import async_playwright
 
@@ -10,36 +10,38 @@ async def main():
         page = await browser.new_page()
         await page.goto(URL, wait_until="domcontentloaded")
 
-        total = await page.locator(".clickable-row").count()
-        print(f"Total .clickable-row page-wide: {total}")
+        # All elements with data-link pointing to a floorplan page
+        anchors = page.locator("[data-link]")
+        total = await anchors.count()
+        print(f"Total [data-link] anchors page-wide: {total}")
 
-        desktop = page.locator("div.elementor-element-de0643b")
-        print(f"Desktop block (de0643b) found: {await desktop.count()}")
-        print(f"  .clickable-row: {await desktop.locator('.clickable-row').count()}")
-        print(f"  visible: {await desktop.locator('.clickable-row:not(.d-none)').count()}")
-        print(f"  hidden: {await desktop.locator('.clickable-row.d-none').count()}")
-
-        mobile = page.locator("div.elementor-element-2caecaa")
-        print(f"\nMobile block (2caecaa) found: {await mobile.count()}")
-        print(f"  .clickable-row: {await mobile.locator('.clickable-row').count()}")
-        print(f"  visible: {await mobile.locator('.clickable-row:not(.d-none)').count()}")
-        print(f"  hidden: {await mobile.locator('.clickable-row.d-none').count()}")
-
-        visible = desktop.locator(".clickable-row:not(.d-none)")
-        vcount = await visible.count()
-        print(f"\n--- Visible desktop rows ({vcount}) ---")
-        for i in range(vcount):
-            row = visible.nth(i)
+        # Get unique data-link values and parent row visibility
+        seen_slugs = set()
+        results = []
+        for i in range(total):
+            a = anchors.nth(i)
+            slug = await a.get_attribute("data-link")
+            if slug in seen_slugs:
+                continue
+            seen_slugs.add(slug)
+            # Climb to the floorplan row (parent that holds all 4 columns)
+            # Each data-link anchor is ONE column; we want its parent row
+            row = a.locator("xpath=..")
+            visible = await row.is_visible()
+            # Gather text from the row
             paragraphs = await row.locator("p").all_text_contents()
-            print(f"  [{i}] {paragraphs}")
+            results.append((slug, visible, paragraphs))
 
-        hidden = desktop.locator(".clickable-row.d-none")
-        hcount = await hidden.count()
-        print(f"\n--- Hidden desktop rows ({hcount}) ---")
-        for i in range(hcount):
-            row = hidden.nth(i)
-            paragraphs = await row.locator("p").all_text_contents()
-            print(f"  [{i}] {paragraphs}")
+        print(f"\nUnique floorplan slugs: {len(results)}")
+        print(f"\n--- All floorplan rows (slug, visible?, paragraphs) ---")
+        for slug, vis, paras in results:
+            marker = "VIS" if vis else "HID"
+            print(f"  [{marker}] {slug}")
+            print(f"        {paras}")
+
+        # Also check: what does d-none look like in DOM?
+        d_none = page.locator(".d-none")
+        print(f"\n.d-none elements in DOM: {await d_none.count()}")
 
         await browser.close()
 
