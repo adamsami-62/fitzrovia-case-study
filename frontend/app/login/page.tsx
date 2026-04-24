@@ -48,11 +48,7 @@ export default function LoginPage() {
             Competitive intelligence,{" "}
             <span className="italic text-rust">automated.</span>
           </div>
-          <div className="hairline my-6 border-paper/20" />
-          <div className="text-sm text-paper/70 leading-relaxed max-w-sm">
-            Daily pricing and incentive data across eleven midtown Toronto
-            buildings. Same rooms, same week, same source of truth.
-          </div>
+
         </div>
         <div className="text-xs text-paper/50 tracking-wide">
           Asset Management · Internal tool
