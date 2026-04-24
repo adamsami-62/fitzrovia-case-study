@@ -77,3 +77,23 @@ export interface ScrapeTriggerResponse {
   finished_at: string | null;
   elapsed_seconds: number;
 }
+
+
+export interface ScrapeKickoffResponse {
+  run_id: number;
+  status: string;
+  message: string;
+}
+
+export interface ScrapeRunStatus {
+  run_id: number;
+  status: string;
+  buildings_attempted: number;
+  buildings_succeeded: number;
+  buildings_failed: number;
+  total_units_found: number;
+  started_at: string;
+  finished_at: string | null;
+  elapsed_seconds: number;
+  is_complete: boolean;
+}

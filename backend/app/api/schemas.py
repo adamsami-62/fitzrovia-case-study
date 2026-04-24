@@ -92,3 +92,24 @@ class ScrapeTriggerResponse(BaseModel):
     started_at: datetime
     finished_at: datetime | None
     elapsed_seconds: float
+
+
+class ScrapeKickoffResponse(BaseModel):
+    """Returned immediately when a scrape is kicked off in the background."""
+    run_id: int
+    status: str  # "running"
+    message: str
+
+
+class ScrapeRunStatus(BaseModel):
+    """Polled by the frontend to check in on a running scrape."""
+    run_id: int
+    status: str  # "running" | "success" | "partial" | "failed"
+    buildings_attempted: int
+    buildings_succeeded: int
+    buildings_failed: int
+    total_units_found: int
+    started_at: datetime
+    finished_at: datetime | None
+    elapsed_seconds: float
+    is_complete: bool

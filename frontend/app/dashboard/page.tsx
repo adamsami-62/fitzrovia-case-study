@@ -9,7 +9,7 @@ import { BuildingsTable } from "@/components/BuildingsTable";
 import { Filters } from "@/components/Filters";
 import { IncentiveBlock } from "@/components/IncentiveBlock";
 import { ChatBubble } from "@/components/ChatBubble";
-import type { DashboardResponse } from "@/lib/types";
+import type { DashboardResponse, ScrapeRunStatus } from "@/lib/types";
 
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
@@ -43,15 +43,38 @@ export default function DashboardPage() {
   useEffect(() => { if (ready) load(); }, [ready]);
 
   async function onScrape() {
-    if (!confirm("Run a live scrape now? Takes about 60-90 seconds.")) return;
+    if (!confirm("Run a live scrape now? Takes 1 to 3 minutes. You can leave this page and come back.")) return;
     setScraping(true);
-    setScrapeMsg(null);
+    setScrapeMsg("Starting scrape...");
     try {
-      const r = await api.triggerScrape();
-      setScrapeMsg(
-        `Run ${r.run_id}: ${r.status}. ${r.buildings_succeeded}/${r.buildings_attempted} buildings, ${r.total_units_found} units, ${r.elapsed_seconds}s.`
-      );
-      await load();
+      const kickoff = await api.triggerScrape();
+      setScrapeMsg(`Run ${kickoff.run_id} started. Polling for progress...`);
+
+      // Poll every 2 seconds until done. ~90 tries = 3 minutes max.
+      let status: ScrapeRunStatus | null = null;
+      for (let i = 0; i < 120; i++) {
+        await new Promise((res) => setTimeout(res, 2000));
+        try {
+          status = await api.pollScrapeRun(kickoff.run_id);
+        } catch (pollErr) {
+          // Transient network blip during a long scrape; keep trying.
+          continue;
+        }
+        if (status.is_complete) break;
+        const elapsed = Math.round(status.elapsed_seconds);
+        setScrapeMsg(
+          `Scraping in progress... ${elapsed}s elapsed, ${status.buildings_succeeded}/${status.buildings_attempted} buildings done so far.`
+        );
+      }
+
+      if (status && status.is_complete) {
+        setScrapeMsg(
+          `Run ${status.run_id} ${status.status}. ${status.buildings_succeeded}/${status.buildings_attempted} buildings, ${status.total_units_found} units, ${status.elapsed_seconds}s.`
+        );
+        await load();
+      } else {
+        setScrapeMsg("Scrape is taking longer than expected. Refresh the page in a few minutes to see results.");
+      }
     } catch (e) {
       setScrapeMsg(e instanceof Error ? e.message : "Scrape failed");
     } finally {

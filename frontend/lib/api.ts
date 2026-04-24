@@ -3,7 +3,8 @@ import type {
   BuildingDetail,
   DashboardResponse,
   LoginResponse,
-  ScrapeTriggerResponse,
+  ScrapeKickoffResponse,
+  ScrapeRunStatus,
 } from "./types";
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
@@ -69,8 +70,12 @@ export const api = {
     return request(`/buildings/${id}`);
   },
 
-  async triggerScrape(): Promise<ScrapeTriggerResponse> {
-    return request("/scrape/trigger", { method: "POST" }, 240_000);
+  async triggerScrape(): Promise<ScrapeKickoffResponse> {
+    return request("/scrape/trigger", { method: "POST" });
+  },
+
+  async pollScrapeRun(runId: number): Promise<ScrapeRunStatus> {
+    return request(`/scrape/runs/${runId}`);
   },
 
   async askChat(question: string): Promise<{ answer: string; error: string | null }> {
