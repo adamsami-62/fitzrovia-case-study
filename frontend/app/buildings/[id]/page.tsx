@@ -18,6 +18,26 @@ export default function BuildingPage({ params }: { params: { id: string } }) {
   const [data, setData] = useState<BuildingDetail | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [unitType, setUnitType] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  async function onPdf() {
+    if (!data) return;
+    setPdfLoading(true);
+    try {
+      const url = await api.buildingPdfUrl(data.id);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `fitzrovia-${data.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "PDF failed");
+    } finally {
+      setPdfLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!ready) return;
@@ -41,13 +61,22 @@ export default function BuildingPage({ params }: { params: { id: string } }) {
 
   return (
     <Shell>
-      <div className="mb-2">
+      <div className="mb-2 flex items-center justify-between">
         <Link
           href="/dashboard"
           className="text-sm text-muted hover:text-ink underline underline-offset-4"
         >
           ← Dashboard
         </Link>
+        {data && (
+          <button
+            onClick={onPdf}
+            disabled={pdfLoading}
+            className="px-3 py-1.5 border border-navy text-navy hover:bg-navy hover:text-paper transition-colors text-xs font-medium tracking-wide"
+          >
+            {pdfLoading ? "Preparing…" : "Export PDF"}
+          </button>
+        )}
       </div>
 
       {err && (

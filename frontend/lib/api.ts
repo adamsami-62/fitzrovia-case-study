@@ -66,6 +66,17 @@ export const api = {
     });
   },
 
+  /** Per-building PDF blob URL. */
+  async buildingPdfUrl(id: number): Promise<string> {
+    const token = getToken();
+    const resp = await fetch(`${BASE}/export/pdf/${id}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!resp.ok) throw new ApiError(resp.status, "Building PDF export failed");
+    const blob = await resp.blob();
+    return URL.createObjectURL(blob);
+  },
+
   /** Download the PDF as a Blob — returns an object URL for anchor href. */
   async pdfUrl(): Promise<string> {
     const token = getToken();

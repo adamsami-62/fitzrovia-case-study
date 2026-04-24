@@ -6,7 +6,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from weasyprint import HTML
 
-from backend.app.api.schemas import DashboardResponse
+from backend.app.api.schemas import BuildingDetail, DashboardResponse
 
 
 TEMPLATE_DIR = Path(__file__).parent
@@ -33,4 +33,15 @@ _env.filters["dt"] = _fmt_dt
 def render_dashboard_pdf(dashboard: DashboardResponse) -> bytes:
     template = _env.get_template("template.html")
     html_str = template.render(d=dashboard)
+    return HTML(string=html_str).write_pdf()
+
+
+def render_building_pdf(building: BuildingDetail) -> bytes:
+    """Render a single building's detail as a one-page PDF."""
+    from datetime import datetime, timezone
+    template = _env.get_template("template_building.html")
+    html_str = template.render(
+        b=building,
+        generated_at=datetime.now(timezone.utc),
+    )
     return HTML(string=html_str).write_pdf()
