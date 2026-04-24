@@ -57,6 +57,16 @@ def persist_result(db: Session, run: ScrapeRun, result: ScrapeResult) -> dict:
 
     for scraped in result.units:
         seen_identifiers.add(scraped.unit_identifier)
+        # For specific-unit scrapers, null availability means the site listed the
+        # unit without a concrete date. We treat that as available now, since the
+        # site itself considers it leasable. Floorplan-template scrapers
+        # (Whitney, Corner, Akoya) keep null because they genuinely don't expose
+        # per-unit availability.
+        if (
+            scraped.listing_type == "specific_unit"
+            and not scraped.available_date
+        ):
+            scraped.available_date = "Available Now"
         existing = (
             db.query(Unit)
             .filter_by(building_id=building.id, unit_identifier=scraped.unit_identifier)

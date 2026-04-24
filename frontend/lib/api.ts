@@ -12,7 +12,7 @@ class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}, timeoutMs?: number): Promise<T> {
   const token = getToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -20,7 +20,21 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const resp = await fetch(`${BASE}${path}`, { ...init, headers });
+  const controller = timeoutMs ? new AbortController() : undefined;
+  const timer = controller
+    ? setTimeout(() => controller.abort(), timeoutMs)
+    : undefined;
+
+  let resp: Response;
+  try {
+    resp = await fetch(`${BASE}${path}`, {
+      ...init,
+      headers,
+      signal: controller?.signal,
+    });
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 
   if (resp.status === 401) {
     // Token expired or invalid — clear and bounce to login.
@@ -56,7 +70,7 @@ export const api = {
   },
 
   async triggerScrape(): Promise<ScrapeTriggerResponse> {
-    return request("/scrape/trigger", { method: "POST" });
+    return request("/scrape/trigger", { method: "POST" }, 240_000);
   },
 
   async askChat(question: string): Promise<{ answer: string; error: string | null }> {
