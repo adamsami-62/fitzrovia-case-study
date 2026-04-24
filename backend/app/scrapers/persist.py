@@ -28,14 +28,20 @@ def persist_result(db: Session, run: ScrapeRun, result: ScrapeResult) -> dict:
         db.commit()
         return {"building": building.name, "status": "failed", "units": 0}
 
-    # Incentive handling with change detection
+    # Incentive handling with change detection.
+    # If parse_incentive returns _ok=False, we DO store the raw text and the
+    # fallback parse result (so the dashboard can surface the error), but we do
+    # NOT update incentive_hash. That way the next scrape sees the hash as
+    # stale and retries the parse — auto-healing against transient API errors.
     incentive_ai_called = False
     if result.incentive_raw:
         new_hash = _hash_text(result.incentive_raw)
         if building.incentive_hash != new_hash:
+            parsed = parse_incentive(result.incentive_raw)
             building.current_incentive_raw = result.incentive_raw
-            building.current_incentive_parsed = parse_incentive(result.incentive_raw)
-            building.incentive_hash = new_hash
+            building.current_incentive_parsed = parsed
+            if parsed and parsed.get("_ok"):
+                building.incentive_hash = new_hash
             incentive_ai_called = True
         building.incentive_last_seen_at = datetime.utcnow()
         building.incentive_source_url = result.incentive_source_url

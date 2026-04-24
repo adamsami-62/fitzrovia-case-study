@@ -85,9 +85,14 @@ class TriconBaseScraper(BaseScraper):
     max_load_more_clicks: int = 50
 
     async def _dismiss_cookies(self, page: Page) -> None:
-        """Tricon uses a cookie banner that can intercept clicks on the widget."""
+        """Tricon's site uses OneTrust, which overlays a .onetrust-pc-dark-filter
+        that intercepts clicks on the widget. Cover all the common OneTrust
+        accept buttons plus the legacy text-match fallbacks."""
         for selector in [
+            "#onetrust-accept-btn-handler",           # OneTrust standard
+            "#onetrust-reject-all-handler",           # OneTrust (reject also dismisses overlay)
             "button:has-text('Accept All Cookies')",
+            "button:has-text('Accept All')",
             "button:has-text('Accept')",
         ]:
             try:
@@ -271,7 +276,11 @@ class TriconBaseScraper(BaseScraper):
 
                 await self._dismiss_cookies(page)
                 await self._scroll_widget_into_view(page)
-                await self._click_list_view_tab(page)
+                if not await self._click_list_view_tab(page):
+                    raise RuntimeError(
+                        "Failed to open List View tab — likely a cookie banner "
+                        "intercepted the click. Check _dismiss_cookies selectors."
+                    )
                 await self._click_load_more_until_gone(page)
 
                 units = await self.extract_units(page)

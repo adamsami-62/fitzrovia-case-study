@@ -23,7 +23,6 @@ class Building(Base):
     name: Mapped[str] = mapped_column(String(255), unique=True)
     address: Mapped[str] = mapped_column(String(255))
     source_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    management_company: Mapped[str | None] = mapped_column(String(255), nullable=True)
     scraper_key: Mapped[str] = mapped_column(String(64), unique=True)
     last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_scrape_status: Mapped[str] = mapped_column(String(32), default="never")

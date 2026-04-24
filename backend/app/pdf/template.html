@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Fitzrovia Rental Comp Report</title>
+<style>
+  @page { size: letter; margin: 0.6in 0.5in; }
+  body { font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+         color: #1a1a1a; font-size: 10pt; line-height: 1.4; }
+  h1 { font-size: 22pt; margin: 0 0 4pt 0; color: #1a2540; letter-spacing: -0.5pt; }
+  h2 { font-size: 13pt; margin: 18pt 0 6pt 0; padding-bottom: 3pt;
+       border-bottom: 1.5pt solid #1a2540; color: #1a2540; }
+  h3 { font-size: 11pt; margin: 10pt 0 3pt 0; color: #1a2540; }
+  .subtitle { color: #666; font-size: 9.5pt; margin-bottom: 14pt; }
+  .meta { color: #555; font-size: 9pt; }
+  .stats { display: table; width: 100%; margin: 8pt 0; }
+  .stat { display: table-cell; padding: 6pt 4pt; border-left: 2pt solid #c8553d; width: 20%; }
+  .stat:first-child { border-left: none; padding-left: 0; }
+  .stat-num { font-size: 16pt; font-weight: 700; color: #1a2540; }
+  .stat-lbl { font-size: 8.5pt; color: #666; text-transform: uppercase; letter-spacing: 0.5pt; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4pt; font-size: 9pt; }
+  th { background: #1a2540; color: white; text-align: left; padding: 5pt 6pt;
+       font-weight: 600; font-size: 8.5pt; letter-spacing: 0.3pt; }
+  td { padding: 5pt 6pt; border-bottom: 0.5pt solid #e5e5e5; vertical-align: top; }
+  tr.failed td { color: #888; font-style: italic; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .building-card { page-break-inside: avoid; margin-top: 8pt; padding: 8pt 0;
+                   border-top: 0.5pt solid #ddd; }
+  .incentive { background: #fef7ed; padding: 6pt 8pt; border-left: 2pt solid #c8553d;
+               margin: 4pt 0; font-size: 9pt; white-space: pre-wrap; }
+  .no-inc { color: #999; font-style: italic; font-size: 9pt; }
+  .foot { color: #888; font-size: 8pt; text-align: center; margin-top: 20pt;
+          padding-top: 6pt; border-top: 0.5pt solid #ddd; }
+  .status-success { color: #2a7a3a; font-weight: 600; }
+  .status-failed  { color: #a82a2a; font-weight: 600; }
+  .error-msg { color: #a82a2a; font-size: 8.5pt; margin-top: 2pt; }
+</style>
+</head>
+<body>
+
+<h1>Rental Comp Report</h1>
+<div class="subtitle">Fitzrovia Asset Management</div>
+<div class="meta">
+  Generated: {{ d.generated_at | dt }}<br>
+  Last scrape finished: {{ d.last_run_finished_at | dt }}
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stat-num">{{ d.total_units }}</div><div class="stat-lbl">Available units</div></div>
+  <div class="stat"><div class="stat-num">{{ d.total_buildings }}</div><div class="stat-lbl">Buildings tracked</div></div>
+  <div class="stat"><div class="stat-num">{{ d.buildings_succeeded }}/{{ d.total_buildings }}</div><div class="stat-lbl">Scrapes OK</div></div>
+  <div class="stat"><div class="stat-num">{{ d.buildings_with_incentives }}</div><div class="stat-lbl">With incentives</div></div>
+  <div class="stat"><div class="stat-num">{{ d.by_unit_type|length }}</div><div class="stat-lbl">Unit categories</div></div>
+</div>
+
+<h2>Summary by Unit Type</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Unit type</th><th class="num">Available</th><th class="num">Buildings</th>
+      <th class="num">Rent min</th><th class="num">Rent avg</th><th class="num">Rent max</th>
+      <th class="num">Sqft range</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in d.by_unit_type %}
+    <tr>
+      <td><strong>{{ r.unit_type }}</strong></td>
+      <td class="num">{{ r.total_available }}</td>
+      <td class="num">{{ r.buildings_count }}</td>
+      <td class="num">{{ r.rent_min | money }}</td>
+      <td class="num">{{ r.rent_avg | money }}</td>
+      <td class="num">{{ r.rent_max | money }}</td>
+      <td class="num">
+        {% if r.sqft_min and r.sqft_max %}{{ r.sqft_min }}–{{ r.sqft_max }}{% else %}—{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>By Building</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Building</th><th class="num">Units</th>
+      <th class="num">Rent range</th><th>Incentive?</th><th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for b in d.buildings %}
+    <tr class="{{ 'failed' if b.last_scrape_status == 'failed' else '' }}">
+      <td><strong>{{ b.name }}</strong><br><span class="meta">{{ b.address }}</span></td>
+      <td class="num">{{ b.total_units }}</td>
+      <td class="num">
+        {% if b.rent_min %}{{ b.rent_min | money }} – {{ b.rent_max | money }}{% else %}—{% endif %}
+      </td>
+      <td>{% if b.has_incentive %}Yes{% else %}—{% endif %}</td>
+      <td>
+        {% if b.last_scrape_status == 'success' %}<span class="status-success">Success</span>
+        {% elif b.last_scrape_status == 'failed' %}<span class="status-failed">Failed</span>
+        {% else %}{{ b.last_scrape_status }}{% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<h2>Active Incentives</h2>
+{% set any_inc = false %}
+{% for b in d.buildings if b.has_incentive %}
+  {% set any_inc = true %}
+  <div class="building-card">
+    <h3>{{ b.name }}</h3>
+    <div class="meta">{{ b.address }}
+      {% if b.incentive_source_url %} · Source: {{ b.incentive_source_url }}{% endif %}
+    </div>
+    <div class="incentive">{{ b.incentive_raw }}</div>
+  </div>
+{% endfor %}
+{% if not any_inc %}
+  <p class="no-inc">No active incentives captured in the latest scrape.</p>
+{% endif %}
+
+<div class="foot">
+  Fitzrovia Case Study · Automated Rental Comp Scraper · Data as of {{ d.last_run_finished_at | dt }}
+</div>
+
+</body>
+</html>

@@ -1,0 +1,47 @@
+# Render.com blueprint for the Fitzrovia case study backend.
+#
+# Deploy: push this repo to GitHub, connect on render.com, it'll pick up this file.
+# WeasyPrint and Playwright both need system libraries — that's why we use a
+# docker-ish startup script rather than plain pip install.
+services:
+  - type: web
+    name: fitzrovia-scraper-api
+    env: python
+    plan: free
+    region: oregon
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r backend/requirements.txt
+      # Playwright Chromium + its system deps
+      playwright install --with-deps chromium
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      # These must be set in the Render dashboard before first deploy:
+      #   ANTHROPIC_API_KEY, JWT_SECRET, ADMIN_EMAIL, ADMIN_PASSWORD,
+      #   VIEWER_EMAIL, VIEWER_PASSWORD, ALLOWED_ORIGIN
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRY_MINUTES
+        value: "60"
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: VIEWER_EMAIL
+        sync: false
+      - key: VIEWER_PASSWORD
+        sync: false
+      - key: ALLOWED_ORIGIN
+        sync: false
+      - key: DATABASE_URL
+        value: sqlite:///./backend/data/app.db
+      - key: ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: PYTHON_VERSION
+        value: "3.11.9"
